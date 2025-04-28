@@ -6,6 +6,10 @@
     ssh_port: 13122
     
   tasks:
+    - name: Get the IP address of the server
+      command: hostname -I
+      register: ip_resultserver
+
     - name: Get the hostname of the server
       command: hostname
       register: hostname_result
@@ -15,6 +19,7 @@
         ssh_user: "{{ lookup('password', '/dev/null length=10 chars=ascii_letters') }}"
         ssh_password: "{{ lookup('password', '/dev/null length=20') }}"
         server_hostname: "{{ hostname_result.stdout }}"
+        server_ip: "{{ ip_resultserver.stdout.split()[0] }}"
 
     - name: add to keePass
       shell: |
@@ -48,6 +53,20 @@
         # Save the database
         kp.save()
         EOF
+      delegate_to: localhost
+      become: no
+
+    - name: Add server details to local SSH config
+      lineinfile:
+        path: ~/.ssh/config
+        state: present
+        create: yes
+        line: |
+          Host {{ server_hostname }}
+                  HostName {{ server_ip }}
+                  Port {{ ssh_port }}
+                  User {{ ssh_user }}
+                  IdentityFile /Users/sunebentsen/.ssh/id_njalla
       delegate_to: localhost
       become: no
 
